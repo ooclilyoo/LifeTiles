@@ -68,16 +68,8 @@ function getInitialData(tabType) {
             };
         case 'booksFilms':
             return {
-                books: {
-                    reading: [],
-                    completed: [],
-                    wishlist: []
-                },
-                films: {
-                    watching: [],
-                    completed: [],
-                    wishlist: []
-                }
+                books: [],
+                films: []
             };
         default:
             return {};
@@ -272,23 +264,46 @@ function showItemDetail(item, listType) {
         setupDetailEventListeners(modal, item, listType);
         
     } else {
-        // For Books & Films, show simple detail view
+        // For Books & Films, show enhanced detail view
         modal.innerHTML = `
-            <h3>${item.name}</h3>
+            <h3>${listType === 'books' ? 'Book' : 'Film'} Details</h3>
             <div class="item-detail-content">
-                <p>This is a ${itemType} item.</p>
-                <p>Created: ${new Date(item.created).toLocaleDateString()}</p>
-                <p>Details will be added in future updates...</p>
+                <div class="detail-section">
+                    <label for="detailItemName">Item Name:</label>
+                    <input type="text" id="detailItemName" value="${item.name}" class="detail-input">
+                </div>
+                
+                <div class="detail-section">
+                    <label for="detailNotes">Notes:</label>
+                    <textarea id="detailNotes" class="detail-textarea" placeholder="Add your notes here...">${item.notes || ''}</textarea>
+                </div>
+                
+                <div class="detail-section">
+                    <label class="detail-label">Completion Status:</label>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="detailCompleted" ${item.completed ? 'checked' : ''}>
+                        <label for="detailCompleted">Mark as completed</label>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <label class="detail-label">Created:</label>
+                    <span>${new Date(item.created).toLocaleDateString()}</span>
+                </div>
+                
+                <div class="detail-section">
+                    <label class="detail-label">Last Updated:</label>
+                    <span>${new Date(item.updated).toLocaleDateString()}</span>
+                </div>
             </div>
             <div class="item-detail-actions">
-                <button class="btn btn-secondary" id="closeDetail">Close</button>
+                <button class="btn btn-secondary" id="cancelDetail">Cancel</button>
+                <button class="btn btn-primary" id="saveDetail">Save Changes</button>
             </div>
         `;
         
-        // Add close event for simple detail view
-        modal.querySelector('#closeDetail').addEventListener('click', () => {
-            closeModal(modal);
-        });
+        // Add event listeners for the enhanced detail view
+        setupBooksFilmsDetailEventListeners(modal, item, listType);
     }
     
     // Add overlay
@@ -646,8 +661,15 @@ function renderBooksFilmsList(listType, containerId) {
         return;
     }
 
-    // Sort items alphabetically
-    const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    // Sort items: uncompleted first, then alphabetically within each group
+    const sortedItems = [...items].sort((a, b) => {
+        // First sort by completion status
+        if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1; // Uncompleted first
+        }
+        // Then sort alphabetically
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     // Render each item
     sortedItems.forEach((item, index) => {
@@ -660,15 +682,29 @@ function renderBooksFilmsList(listType, containerId) {
 function createBooksFilmsItemElement(item, listType, index) {
     const itemElement = document.createElement('div');
     itemElement.className = 'books-films-item';
+    if (item.completed) {
+        itemElement.classList.add('completed');
+    }
     itemElement.dataset.index = index;
     
     itemElement.innerHTML = `
+        <div class="books-films-item-checkbox">
+            <input type="checkbox" ${item.completed ? 'checked' : ''} id="checkbox-${listType}-${index}">
+            <label for="checkbox-${listType}-${index}"></label>
+        </div>
         <div class="books-films-item-name">${item.name}</div>
         <div class="books-films-item-actions">
             <button class="action-btn edit" title="Edit">✏️</button>
             <button class="action-btn delete" title="Delete">🗑️</button>
         </div>
     `;
+    
+    // Add checkbox change event
+    const checkbox = itemElement.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', (e) => {
+        e.stopPropagation();
+        toggleBooksFilmsCompletion(listType, index, checkbox.checked);
+    });
     
     // Add click event for item details
     itemElement.querySelector('.books-films-item-name').addEventListener('click', () => {
@@ -702,6 +738,16 @@ function editBooksFilmsItem(item, listType, index) {
                 <label for="editItemName">Item Name</label>
                 <input type="text" id="editItemName" value="${item.name}" required>
             </div>
+            <div class="form-group">
+                <label for="editNotes">Notes</label>
+                <textarea id="editNotes" placeholder="Add your notes here...">${item.notes || ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="editCompleted" ${item.completed ? 'checked' : ''}>
+                    <span>Mark as completed</span>
+                </label>
+            </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -714,8 +760,10 @@ function editBooksFilmsItem(item, listType, index) {
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         const newName = modal.querySelector('#editItemName').value.trim();
+        const notes = modal.querySelector('#editNotes').value.trim();
+        const completed = modal.querySelector('#editCompleted').checked;
         if (newName) {
-            updateBooksFilmsItem(listType, index, newName);
+            updateBooksFilmsItem(listType, index, newName, notes, completed);
             closeModal(modal);
         }
     });
@@ -738,11 +786,15 @@ function editBooksFilmsItem(item, listType, index) {
 }
 
 // Update Books and Films Item
-function updateBooksFilmsItem(listType, index, newName) {
+function updateBooksFilmsItem(listType, index, newName, notes, completed) {
     const savedData = loadFromStorage('lifetiles_books_films') || {};
     if (savedData[listType] && savedData[listType][index]) {
         savedData[listType][index].name = newName;
+        savedData[listType][index].notes = notes;
+        savedData[listType][index].completed = completed;
         savedData[listType][index].updated = new Date().toISOString();
+        
+        // Save to localStorage
         saveToStorage('lifetiles_books_films', savedData);
         
         // Re-render the list
@@ -821,6 +873,8 @@ function createBooksFilmsItem(listType, name) {
     
     const newItem = {
         name: name,
+        completed: false,
+        notes: '',
         created: new Date().toISOString(),
         updated: new Date().toISOString()
     };
@@ -843,6 +897,19 @@ function toggleTodoCompletion(listType, index, completed) {
         // Re-render both lists to update sorting
         renderTodoList('singleItems', 'singleItemsList');
         renderTodoList('recurringItems', 'recurringItemsList');
+    }
+}
+
+// Toggle Books and Films Completion
+function toggleBooksFilmsCompletion(listType, index, completed) {
+    const savedData = loadFromStorage('lifetiles_books_films') || {};
+    if (savedData[listType] && savedData[listType][index]) {
+        savedData[listType][index].completed = completed;
+        savedData[listType][index].updated = new Date().toISOString();
+        saveToStorage('lifetiles_books_films', savedData);
+        
+        // Re-render the list
+        renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
     }
 }
 
@@ -1114,6 +1181,60 @@ function saveDetailChanges(modal, item, listType) {
         // Re-render both lists
         renderTodoList('singleItems', 'singleItemsList');
         renderTodoList('recurringItems', 'recurringItemsList');
+        
+        // Close modal
+        closeModal(modal);
+    }
+}
+  
+// Setup Books & Films Detail Event Listeners
+function setupBooksFilmsDetailEventListeners(modal, item, listType) {
+    // Save button
+    const saveBtn = modal.querySelector('#saveDetail');
+    saveBtn.addEventListener('click', () => {
+        saveBooksFilmsDetailChanges(modal, item, listType);
+    });
+    
+    // Cancel button
+    const cancelBtn = modal.querySelector('#cancelDetail');
+    cancelBtn.addEventListener('click', () => {
+        closeModal(modal);
+    });
+    
+    // Completion checkbox
+    const completedCheckbox = modal.querySelector('#detailCompleted');
+    completedCheckbox.addEventListener('change', () => {
+        // Update the item's completion status immediately for visual feedback
+        item.completed = completedCheckbox.checked;
+    });
+}
+
+// Save Books & Films Detail Changes
+function saveBooksFilmsDetailChanges(modal, item, listType) {
+    const newName = modal.querySelector('#detailItemName').value.trim();
+    const notes = modal.querySelector('#detailNotes').value.trim();
+    const completed = modal.querySelector('#detailCompleted').checked;
+    
+    if (!newName) {
+        alert('Item name cannot be empty');
+        return;
+    }
+    
+    // Update the item
+    const savedData = loadFromStorage('lifetiles_books_films') || {};
+    const currentIndex = savedData[listType].findIndex(i => i.name === item.name && i.created === item.created);
+    
+    if (currentIndex !== -1) {
+        savedData[listType][currentIndex].name = newName;
+        savedData[listType][currentIndex].notes = notes;
+        savedData[listType][currentIndex].completed = completed;
+        savedData[listType][currentIndex].updated = new Date().toISOString();
+        
+        // Save to localStorage
+        saveToStorage('lifetiles_books_films', savedData);
+        
+        // Re-render the list
+        renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
         
         // Close modal
         closeModal(modal);
