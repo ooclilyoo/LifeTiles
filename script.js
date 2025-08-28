@@ -110,8 +110,15 @@ function renderTodoList(listType, containerId) {
         return;
     }
     
-    // Sort items alphabetically
-    const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    // Sort items: uncompleted first, then alphabetically within each group
+    const sortedItems = [...items].sort((a, b) => {
+        // First sort by completion status
+        if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1; // Uncompleted first
+        }
+        // Then sort alphabetically
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
     
     // Render each item
     sortedItems.forEach((item, index) => {
@@ -124,15 +131,29 @@ function renderTodoList(listType, containerId) {
 function createTodoItemElement(item, listType, index) {
     const itemElement = document.createElement('div');
     itemElement.className = 'todo-item';
+    if (item.completed) {
+        itemElement.classList.add('completed');
+    }
     itemElement.dataset.index = index;
     
     itemElement.innerHTML = `
+        <div class="todo-item-checkbox">
+            <input type="checkbox" ${item.completed ? 'checked' : ''} id="checkbox-${listType}-${index}">
+            <label for="checkbox-${listType}-${index}"></label>
+        </div>
         <div class="todo-item-name">${item.name}</div>
         <div class="todo-item-actions">
             <button class="action-btn edit" title="Edit">✏️</button>
             <button class="action-btn delete" title="Delete">🗑️</button>
         </div>
     `;
+    
+    // Add checkbox change event
+    const checkbox = itemElement.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', (e) => {
+        e.stopPropagation();
+        toggleTodoCompletion(listType, index, checkbox.checked);
+    });
     
     // Add click event for item details
     itemElement.querySelector('.todo-item-name').addEventListener('click', () => {
@@ -166,22 +187,109 @@ function showItemDetail(item, listType) {
         itemType = listType === 'books' ? 'book' : 'film';
     }
     
-    modal.innerHTML = `
-        <h3>${item.name}</h3>
-        <div class="item-detail-content">
-            <p>This is a ${itemType} item.</p>
-            <p>Created: ${new Date(item.created).toLocaleDateString()}</p>
-            <p>Details will be added in future updates...</p>
-        </div>
-        <div class="item-detail-actions">
-            <button class="btn btn-secondary" id="closeDetail">Close</button>
-        </div>
-    `;
-    
-    // Add close event
-    modal.querySelector('#closeDetail').addEventListener('click', () => {
-        closeModal(modal);
-    });
+    // For To-Do items, show enhanced detail view
+    if (listType === 'singleItems' || listType === 'recurringItems') {
+        modal.innerHTML = `
+            <h3>To-Do Item Details</h3>
+            <div class="item-detail-content">
+                <div class="detail-section">
+                    <label for="detailItemName">Item Name:</label>
+                    <input type="text" id="detailItemName" value="${item.name}" class="detail-input">
+                </div>
+                
+                <div class="detail-section">
+                    <label class="detail-label">Completion Status:</label>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="detailCompleted" ${item.completed ? 'checked' : ''}>
+                        <label for="detailCompleted">Mark as completed</label>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <label class="detail-label">Item Type:</label>
+                    <div class="type-toggle">
+                        <button class="type-btn ${listType === 'singleItems' ? 'active' : ''}" data-type="singleItems">Single</button>
+                        <button class="type-btn ${listType === 'recurringItems' ? 'active' : ''}" data-type="recurringItems">Recurring</button>
+                    </div>
+                </div>
+                
+                ${listType === 'recurringItems' ? `
+                <div class="detail-section recurring-options">
+                    <label class="detail-label">Recurring Options:</label>
+                    <div class="recurring-frequency">
+                        <label>
+                            <input type="radio" name="frequency" value="weekly" ${item.recurring?.frequency === 'weekly' ? 'checked' : ''}>
+                            Weekly
+                        </label>
+                        <label>
+                            <input type="radio" name="frequency" value="biweekly" ${item.recurring?.frequency === 'biweekly' ? 'checked' : ''}>
+                            Bi-weekly
+                        </label>
+                        <label>
+                            <input type="radio" name="frequency" value="monthly" ${item.recurring?.frequency === 'monthly' ? 'checked' : ''}>
+                            Monthly
+                        </label>
+                    </div>
+                    
+                    <div class="weekday-selection" ${item.recurring?.frequency === 'weekly' ? '' : 'style="display: none;"'}>
+                        <label class="detail-label">Weekdays:</label>
+                        <div class="weekday-checkboxes">
+                            <label><input type="checkbox" value="0" ${item.recurring?.weekdays?.includes(0) ? 'checked' : ''}> Sun</label>
+                            <label><input type="checkbox" value="1" ${item.recurring?.weekdays?.includes(1) ? 'checked' : ''}> Mon</label>
+                            <label><input type="checkbox" value="2" ${item.recurring?.weekdays?.includes(2) ? 'checked' : ''}> Tue</label>
+                            <label><input type="checkbox" value="3" ${item.recurring?.weekdays?.includes(3) ? 'checked' : ''}> Wed</label>
+                            <label><input type="checkbox" value="4" ${item.recurring?.weekdays?.includes(4) ? 'checked' : ''}> Thu</label>
+                            <label><input type="checkbox" value="5" ${item.recurring?.weekdays?.includes(5) ? 'checked' : ''}> Fri</label>
+                            <label><input type="checkbox" value="6" ${item.recurring?.weekdays?.includes(6) ? 'checked' : ''}> Sat</label>
+                        </div>
+                    </div>
+                    
+                    <div class="monthly-dates" ${item.recurring?.frequency === 'monthly' ? '' : 'style="display: none;"'}>
+                        <label class="detail-label">Monthly Dates:</label>
+                        <input type="text" id="monthlyDates" value="${item.recurring?.monthlyDates?.join(', ') || '1, 15'}" placeholder="1, 15, 28" class="detail-input">
+                        <small>Enter dates separated by commas (1-31)</small>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="detail-section">
+                    <label class="detail-label">Created:</label>
+                    <span>${new Date(item.created).toLocaleDateString()}</span>
+                </div>
+                
+                <div class="detail-section">
+                    <label class="detail-label">Last Updated:</label>
+                    <span>${new Date(item.updated).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="item-detail-actions">
+                <button class="btn btn-secondary" id="cancelDetail">Cancel</button>
+                <button class="btn btn-primary" id="saveDetail">Save Changes</button>
+            </div>
+        `;
+        
+        // Add event listeners for the enhanced detail view
+        setupDetailEventListeners(modal, item, listType);
+        
+    } else {
+        // For Books & Films, show simple detail view
+        modal.innerHTML = `
+            <h3>${item.name}</h3>
+            <div class="item-detail-content">
+                <p>This is a ${itemType} item.</p>
+                <p>Created: ${new Date(item.created).toLocaleDateString()}</p>
+                <p>Details will be added in future updates...</p>
+            </div>
+            <div class="item-detail-actions">
+                <button class="btn btn-secondary" id="closeDetail">Close</button>
+            </div>
+        `;
+        
+        // Add close event for simple detail view
+        modal.querySelector('#closeDetail').addEventListener('click', () => {
+            closeModal(modal);
+        });
+    }
     
     // Add overlay
     const overlay = document.createElement('div');
@@ -204,6 +312,12 @@ function editTodoItem(item, listType, index) {
                 <label for="editItemName">Item Name</label>
                 <input type="text" id="editItemName" value="${item.name}" required>
             </div>
+            <div class="form-group">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="editCompleted" ${item.completed ? 'checked' : ''}>
+                    <span>Mark as completed</span>
+                </label>
+            </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -216,8 +330,9 @@ function editTodoItem(item, listType, index) {
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         const newName = modal.querySelector('#editItemName').value.trim();
+        const completed = modal.querySelector('#editCompleted').checked;
         if (newName) {
-            updateTodoItem(listType, index, newName);
+            updateTodoItem(listType, index, newName, completed);
             closeModal(modal);
         }
     });
@@ -240,10 +355,11 @@ function editTodoItem(item, listType, index) {
 }
 
 // Update Todo Item
-function updateTodoItem(listType, index, newName) {
+function updateTodoItem(listType, index, newName, completed) {
     const savedData = loadFromStorage('lifetiles_todo_list') || {};
     if (savedData[listType] && savedData[listType][index]) {
         savedData[listType][index].name = newName;
+        savedData[listType][index].completed = completed;
         savedData[listType][index].updated = new Date().toISOString();
         saveToStorage('lifetiles_todo_list', savedData);
         
@@ -323,8 +439,16 @@ function createTodoItem(listType, name) {
     
     const newItem = {
         name: name,
+        completed: false,
+        type: listType,
         created: new Date().toISOString(),
-        updated: new Date().toISOString()
+        updated: new Date().toISOString(),
+        recurring: listType === 'recurringItems' ? {
+            frequency: 'weekly',
+            weekdays: [1], // Monday
+            biweekly: false,
+            monthlyDates: [1, 15]
+        } : null
     };
     
     savedData[listType].push(newItem);
@@ -708,6 +832,20 @@ function createBooksFilmsItem(listType, name) {
     renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
 }
 
+// Toggle Todo Completion
+function toggleTodoCompletion(listType, index, completed) {
+    const savedData = loadFromStorage('lifetiles_todo_list') || {};
+    if (savedData[listType] && savedData[listType][index]) {
+        savedData[listType][index].completed = completed;
+        savedData[listType][index].updated = new Date().toISOString();
+        saveToStorage('lifetiles_todo_list', savedData);
+        
+        // Re-render both lists to update sorting
+        renderTodoList('singleItems', 'singleItemsList');
+        renderTodoList('recurringItems', 'recurringItemsList');
+    }
+}
+
 // Setup Event Listeners
 function setupEventListeners() {
     // Previous month button
@@ -844,4 +982,141 @@ window.LifeTiles = {
     loadFromStorage,
     getInitialData
 };
+  
+// Setup Detail Event Listeners
+function setupDetailEventListeners(modal, item, listType) {
+    // Save button
+    const saveBtn = modal.querySelector('#saveDetail');
+    saveBtn.addEventListener('click', () => {
+        saveDetailChanges(modal, item, listType);
+    });
+    
+    // Cancel button
+    const cancelBtn = modal.querySelector('#cancelDetail');
+    cancelBtn.addEventListener('click', () => {
+        closeModal(modal);
+    });
+    
+    // Type toggle buttons
+    const typeBtns = modal.querySelectorAll('.type-btn');
+    typeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            typeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    
+    // Frequency radio buttons
+    const frequencyRadios = modal.querySelectorAll('input[name="frequency"]');
+    frequencyRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            updateRecurringOptions(modal, radio.value);
+        });
+    });
+    
+    // Completion checkbox
+    const completedCheckbox = modal.querySelector('#detailCompleted');
+    completedCheckbox.addEventListener('change', () => {
+        // Update the item's completion status immediately for visual feedback
+        item.completed = completedCheckbox.checked;
+    });
+}
+
+// Update Recurring Options Display
+function updateRecurringOptions(modal, frequency) {
+    const weekdaySelection = modal.querySelector('.weekday-selection');
+    const monthlyDates = modal.querySelector('.monthly-dates');
+    
+    if (frequency === 'weekly') {
+        weekdaySelection.style.display = 'block';
+        monthlyDates.style.display = 'none';
+    } else if (frequency === 'monthly') {
+        weekdaySelection.style.display = 'none';
+        monthlyDates.style.display = 'block';
+    } else {
+        weekdaySelection.style.display = 'none';
+        monthlyDates.style.display = 'none';
+    }
+}
+
+// Save Detail Changes
+function saveDetailChanges(modal, item, listType) {
+    const newName = modal.querySelector('#detailItemName').value.trim();
+    const completed = modal.querySelector('#detailCompleted').checked;
+    const newType = modal.querySelector('.type-btn.active').dataset.type;
+    
+    if (!newName) {
+        alert('Item name cannot be empty');
+        return;
+    }
+    
+    // Get recurring options if applicable
+    let recurringOptions = null;
+    if (newType === 'recurringItems') {
+        const frequency = modal.querySelector('input[name="frequency"]:checked').value;
+        const weekdays = [];
+        const monthlyDates = [];
+        
+        if (frequency === 'weekly') {
+            modal.querySelectorAll('.weekday-checkboxes input:checked').forEach(checkbox => {
+                weekdays.push(parseInt(checkbox.value));
+            });
+            if (weekdays.length === 0) {
+                alert('Please select at least one weekday for weekly recurrence');
+                return;
+            }
+        } else if (frequency === 'monthly') {
+            const datesInput = modal.querySelector('#monthlyDates').value.trim();
+            if (datesInput) {
+                monthlyDates = datesInput.split(',').map(d => parseInt(d.trim())).filter(d => d >= 1 && d <= 31);
+                if (monthlyDates.length === 0) {
+                    alert('Please enter valid monthly dates (1-31)');
+                    return;
+                }
+            }
+        }
+        
+        recurringOptions = {
+            frequency: frequency,
+            weekdays: weekdays,
+            biweekly: frequency === 'biweekly',
+            monthlyDates: monthlyDates
+        };
+    }
+    
+    // Update the item
+    const savedData = loadFromStorage('lifetiles_todo_list') || {};
+    const currentIndex = savedData[listType].findIndex(i => i.name === item.name && i.created === item.created);
+    
+    if (currentIndex !== -1) {
+        // Remove from current list
+        savedData[listType].splice(currentIndex, 1);
+        
+        // Create updated item
+        const updatedItem = {
+            ...item,
+            name: newName,
+            completed: completed,
+            type: newType,
+            updated: new Date().toISOString(),
+            recurring: recurringOptions
+        };
+        
+        // Add to new list
+        if (!savedData[newType]) {
+            savedData[newType] = [];
+        }
+        savedData[newType].push(updatedItem);
+        
+        // Save to localStorage
+        saveToStorage('lifetiles_todo_list', savedData);
+        
+        // Re-render both lists
+        renderTodoList('singleItems', 'singleItemsList');
+        renderTodoList('recurringItems', 'recurringItemsList');
+        
+        // Close modal
+        closeModal(modal);
+    }
+}
   

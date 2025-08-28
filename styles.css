@@ -828,6 +828,238 @@ body {
   }
 }
 
+/* Enhanced To-Do Item Styles */
+.todo-item.completed {
+  opacity: 0.6;
+  background-color: #f8fafc;
+}
+
+.todo-item.completed .todo-item-name {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.todo-item-checkbox {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.todo-item-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.todo-item-checkbox label {
+  display: none;
+}
+
+/* Enhanced Detail Modal Styles */
+.detail-section {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.detail-section label {
+  display: block;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.detail-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.detail-input:focus {
+  outline: none;
+  border-color: #3730a3;
+}
+
+.detail-label {
+  display: block;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkbox-wrapper label {
+  margin: 0;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+/* Type Toggle Styles */
+.type-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.type-btn:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.type-btn.active {
+  border-color: #3730a3;
+  background-color: #3730a3;
+  color: white;
+}
+
+/* Recurring Options Styles */
+.recurring-options {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+}
+
+.recurring-frequency {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.recurring-frequency label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+  margin: 0;
+}
+
+.recurring-frequency input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.weekday-selection {
+  margin-bottom: 16px;
+}
+
+.weekday-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.weekday-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: normal;
+  margin: 0;
+  font-size: 14px;
+}
+
+.weekday-checkboxes input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.monthly-dates {
+  margin-bottom: 16px;
+}
+
+.monthly-dates small {
+  display: block;
+  color: #94a3b8;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Dark Mode Support for Enhanced Detail View */
+@media (prefers-color-scheme: dark) {
+  .todo-item.completed {
+    background-color: #334155;
+  }
+  
+  .todo-item.completed .todo-item-name {
+    color: #64748b;
+  }
+  
+  .detail-section label,
+  .detail-label {
+    color: #cbd5e1;
+  }
+  
+  .detail-input {
+    background-color: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+  
+  .detail-input:focus {
+    border-color: #3730a3;
+  }
+  
+  .type-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #cbd5e1;
+  }
+  
+  .type-btn:hover {
+    border-color: #64748b;
+    background-color: #475569;
+  }
+  
+  .type-btn.active {
+    border-color: #3730a3;
+    background-color: #3730a3;
+    color: #e0e7ff;
+  }
+  
+  .recurring-options {
+    border-top-color: #475569;
+  }
+  
+  .monthly-dates small {
+    color: #64748b;
+  }
+}
+
 /* Books & Films Styles */
 .books-films-container {
   max-width: 600px;
