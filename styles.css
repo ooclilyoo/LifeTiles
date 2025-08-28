@@ -827,3 +827,94 @@ body {
     margin: 20px;
   }
 }
+
+/* Books & Films Styles */
+.books-films-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+.books-films-section {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.books-films-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.books-films-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.books-films-item:last-child {
+  border-bottom: none;
+}
+
+.books-films-item:hover {
+  background-color: #f8fafc;
+}
+
+.books-films-item-name {
+  flex: 1;
+  font-size: 16px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.books-films-item-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.books-films-item:hover .books-films-item-actions {
+  opacity: 1;
+}
+
+/* Dark Mode Support for Books & Films */
+@media (prefers-color-scheme: dark) {
+  .books-films-section {
+    background: #1e293b;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+  
+  .books-films-item {
+    border-bottom-color: #334155;
+  }
+  
+  .books-films-item:hover {
+    background-color: #334155;
+  }
+  
+  .books-films-item-name {
+    color: #e2e8f0;
+  }
+}
+
+/* Responsive Design for Books & Films */
+@media (max-width: 480px) {
+  .books-films-container {
+    padding: 16px 0;
+  }
+  
+  .books-films-item {
+    padding: 14px 20px;
+  }
+  
+  .books-films-item-name {
+    font-size: 15px;
+  }
+}

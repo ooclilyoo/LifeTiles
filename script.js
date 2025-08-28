@@ -23,6 +23,9 @@ function initializeApp() {
     // Initialize todo lists
     initializeTodoLists();
     
+    // Initialize books and films lists
+    initializeBooksFilmsLists();
+    
     // Set up event listeners
     setupEventListeners();
     
@@ -156,10 +159,17 @@ function showItemDetail(item, listType) {
     const modal = document.createElement('div');
     modal.className = 'item-detail-modal';
     
+    let itemType = '';
+    if (listType === 'singleItems' || listType === 'recurringItems') {
+        itemType = listType === 'singleItems' ? 'single' : 'recurring';
+    } else if (listType === 'books' || listType === 'films') {
+        itemType = listType === 'books' ? 'book' : 'film';
+    }
+    
     modal.innerHTML = `
         <h3>${item.name}</h3>
         <div class="item-detail-content">
-            <p>This is a ${listType === 'singleItems' ? 'single' : 'recurring'} item.</p>
+            <p>This is a ${itemType} item.</p>
             <p>Created: ${new Date(item.created).toLocaleDateString()}</p>
             <p>Details will be added in future updates...</p>
         </div>
@@ -486,6 +496,218 @@ function closeStatusPicker() {
     if (picker) picker.remove();
 }
 
+// Initialize Books and Films Lists
+function initializeBooksFilmsLists() {
+    renderBooksFilmsList('books', 'booksList');
+    renderBooksFilmsList('films', 'filmsList');
+}
+
+// Render Books and Films List
+function renderBooksFilmsList(listType, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const savedData = loadFromStorage('lifetiles_books_films');
+    const items = savedData?.[listType] || [];
+
+    // Clear container
+    container.innerHTML = '';
+
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No ${listType === 'books' ? 'books' : 'films'} yet</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort items alphabetically
+    const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+    // Render each item
+    sortedItems.forEach((item, index) => {
+        const itemElement = createBooksFilmsItemElement(item, listType, index);
+        container.appendChild(itemElement);
+    });
+}
+
+// Create Books and Films Item Element
+function createBooksFilmsItemElement(item, listType, index) {
+    const itemElement = document.createElement('div');
+    itemElement.className = 'books-films-item';
+    itemElement.dataset.index = index;
+    
+    itemElement.innerHTML = `
+        <div class="books-films-item-name">${item.name}</div>
+        <div class="books-films-item-actions">
+            <button class="action-btn edit" title="Edit">✏️</button>
+            <button class="action-btn delete" title="Delete">🗑️</button>
+        </div>
+    `;
+    
+    // Add click event for item details
+    itemElement.querySelector('.books-films-item-name').addEventListener('click', () => {
+        showItemDetail(item, listType);
+    });
+    
+    // Add edit event
+    itemElement.querySelector('.action-btn.edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        editBooksFilmsItem(item, listType, index);
+    });
+    
+    // Add delete event
+    itemElement.querySelector('.action-btn.delete').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteBooksFilmsItem(listType, index);
+    });
+    
+    return itemElement;
+}
+
+// Edit Books and Films Item
+function editBooksFilmsItem(item, listType, index) {
+    const modal = document.createElement('div');
+    modal.className = 'add-item-modal';
+    
+    modal.innerHTML = `
+        <h3>Edit ${listType === 'books' ? 'Book' : 'Film'}</h3>
+        <form class="add-item-form" id="editForm">
+            <div class="form-group">
+                <label for="editItemName">Item Name</label>
+                <input type="text" id="editItemName" value="${item.name}" required>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    `;
+    
+    // Add form submit event
+    const form = modal.querySelector('#editForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newName = modal.querySelector('#editItemName').value.trim();
+        if (newName) {
+            updateBooksFilmsItem(listType, index, newName);
+            closeModal(modal);
+        }
+    });
+    
+    // Add cancel event
+    modal.querySelector('#cancelEdit').addEventListener('click', () => {
+        closeModal(modal);
+    });
+    
+    // Add overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.addEventListener('click', () => closeModal(modal));
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+    
+    // Focus on input
+    setTimeout(() => modal.querySelector('#editItemName').focus(), 100);
+}
+
+// Update Books and Films Item
+function updateBooksFilmsItem(listType, index, newName) {
+    const savedData = loadFromStorage('lifetiles_books_films') || {};
+    if (savedData[listType] && savedData[listType][index]) {
+        savedData[listType][index].name = newName;
+        savedData[listType][index].updated = new Date().toISOString();
+        saveToStorage('lifetiles_books_films', savedData);
+        
+        // Re-render the list
+        renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
+    }
+}
+
+// Delete Books and Films Item
+function deleteBooksFilmsItem(listType, index) {
+    if (confirm('Are you sure you want to delete this item?')) {
+        const savedData = loadFromStorage('lifetiles_books_films') || {};
+        if (savedData[listType] && savedData[listType][index]) {
+            savedData[listType].splice(index, 1);
+            saveToStorage('lifetiles_books_films', savedData);
+            
+            // Re-render the list
+            renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
+        }
+    }
+}
+
+// Add Books and Films Item
+function addBooksFilmsItem(listType) {
+    const modal = document.createElement('div');
+    modal.className = 'add-item-modal';
+    
+    modal.innerHTML = `
+        <h3>Add ${listType === 'books' ? 'Book' : 'Film'}</h3>
+        <form class="add-item-form" id="addForm">
+            <div class="form-group">
+                <label for="itemName">Item Name</label>
+                <input type="text" id="itemName" placeholder="Enter item name..." required>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelAdd">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Item</button>
+            </div>
+        </form>
+    `;
+    
+    // Add form submit event
+    const form = modal.querySelector('#addForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const itemName = modal.querySelector('#itemName').value.trim();
+        if (itemName) {
+            createBooksFilmsItem(listType, itemName);
+            closeModal(modal);
+        }
+    });
+    
+    // Add cancel event
+    modal.querySelector('#cancelAdd').addEventListener('click', () => {
+        closeModal(modal);
+    });
+    
+    // Add overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.addEventListener('click', () => closeModal(modal));
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+    
+    // Focus on input
+    setTimeout(() => modal.querySelector('#itemName').focus(), 100);
+}
+
+// Create Books and Films Item
+function createBooksFilmsItem(listType, name) {
+    const savedData = loadFromStorage('lifetiles_books_films') || {};
+    
+    if (!savedData[listType]) {
+        savedData[listType] = [];
+    }
+    
+    const newItem = {
+        name: name,
+        created: new Date().toISOString(),
+        updated: new Date().toISOString()
+    };
+    
+    savedData[listType].push(newItem);
+    saveToStorage('lifetiles_books_films', savedData);
+    
+    // Re-render the list
+    renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
+}
+
 // Setup Event Listeners
 function setupEventListeners() {
     // Previous month button
@@ -531,6 +753,22 @@ function setupEventListeners() {
     if (addRecurringItemBtn) {
         addRecurringItemBtn.addEventListener('click', () => {
             addTodoItem('recurringItems');
+        });
+    }
+
+    // Add Books button
+    const addBookBtn = document.getElementById('addBook');
+    if (addBookBtn) {
+        addBookBtn.addEventListener('click', () => {
+            addBooksFilmsItem('books');
+        });
+    }
+    
+    // Add Films button
+    const addFilmBtn = document.getElementById('addFilm');
+    if (addFilmBtn) {
+        addFilmBtn.addEventListener('click', () => {
+            addBooksFilmsItem('films');
         });
     }
 }
