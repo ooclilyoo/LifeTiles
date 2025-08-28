@@ -184,6 +184,40 @@ body {
   border-color: #94a3b8;
 }
 
+/* Challenge Day Indicator */
+.calendar-day.has-challenge {
+  position: relative;
+}
+
+.calendar-day.has-challenge::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: #3730a3;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.calendar-day.has-challenge.other-month::after {
+  background-color: #94a3b8;
+  opacity: 0.6;
+}
+
+/* Dark Mode Support for Challenge Days */
+@media (prefers-color-scheme: dark) {
+  .calendar-day.has-challenge::after {
+    background-color: #818cf8;
+  }
+  
+  .calendar-day.has-challenge.other-month::after {
+    background-color: #64748b;
+  }
+}
+
 .calendar-legend {
   display: flex;
   justify-content: center;
@@ -221,6 +255,10 @@ body {
 
 .legend-color.no-challenge {
   background-color: #94a3b8;
+}
+
+.legend-color.has-challenge {
+  background-color: #3730a3;
 }
 
 .manage-challenges-btn {

@@ -462,7 +462,8 @@ function createTodoItem(listType, name) {
             frequency: 'weekly',
             weekdays: [1], // Monday
             biweekly: false,
-            monthlyDates: [1, 15]
+            monthlyDates: [1, 15],
+            anchorDate: new Date().toISOString() // Add anchor date for biweekly calculations
         } : null
     };
     
@@ -509,6 +510,9 @@ function renderCalendar() {
     // Clear previous calendar
     calendarDaysElement.innerHTML = '';
     
+    // Get challenge days for current month
+    const challengeDays = updateCalendarChallengeDays();
+    
     // Get first day of month and number of days
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -535,8 +539,13 @@ function renderCalendar() {
             dayElement.classList.add('today');
         }
         
-        // Check if it has a saved status
+        // Check if it's a challenge day
         const dateKey = date.toISOString().split('T')[0];
+        if (challengeDays.includes(dateKey)) {
+            dayElement.classList.add('has-challenge');
+        }
+        
+        // Check if it has a saved status (manual override for testing)
         const savedData = loadFromStorage('lifetiles_daily_challenge');
         if (savedData && savedData.dateStatuses && savedData.dateStatuses[dateKey]) {
             dayElement.classList.add(`status-${savedData.dateStatuses[dateKey]}`);
@@ -941,6 +950,14 @@ function setupEventListeners() {
             const todoTab = document.querySelector('[data-tab="todo-list"]');
             if (todoTab) {
                 todoTab.click();
+                
+                // Scroll to recurring section after a short delay to ensure tab is active
+                setTimeout(() => {
+                    const recurringSection = document.querySelector('.todo-section:last-child');
+                    if (recurringSection) {
+                        recurringSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
             }
         });
     }
@@ -1049,6 +1066,84 @@ window.LifeTiles = {
     loadFromStorage,
     getInitialData
 };
+
+// Challenge Day Computation Functions
+function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
+    if (!recurringItems || recurringItems.length === 0) {
+        return false;
+    }
+    
+    // Convert date to GMT+8 for consistent evaluation
+    const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+    const dayOfWeek = gmt8Date.getDay();
+    const dayOfMonth = gmt8Date.getDate();
+    
+    return recurringItems.some(item => {
+        if (!item.recurring) return false;
+        
+        const { frequency, weekdays, monthlyDates } = item.recurring;
+        
+        switch (frequency) {
+            case 'weekly':
+                return weekdays && weekdays.includes(dayOfWeek);
+                
+            case 'biweekly':
+                if (!weekdays || weekdays.length === 0) return false;
+                if (!item.anchorDate) return false;
+                
+                // Calculate weeks difference from anchor date
+                const anchorDate = new Date(item.anchorDate);
+                const anchorGmt8 = new Date(anchorDate.getTime() + (8 * 60 * 60 * 1000));
+                const weeksDiff = Math.floor((gmt8Date - anchorGmt8) / (7 * 24 * 60 * 60 * 1000));
+                
+                return weeksDiff % 2 === 0 && weekdays.includes(dayOfWeek);
+                
+            case 'monthly':
+                return monthlyDates && monthlyDates.includes(dayOfMonth);
+                
+            default:
+                return false;
+        }
+    });
+}
+
+function getChallengeDaysForMonth(year, month, recurringItems) {
+    const challengeDays = [];
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // Add buffer months for biweekly calculations
+    const bufferStart = new Date(year, month - 1, 1);
+    const bufferEnd = new Date(year, month + 1, 0);
+    
+    for (let date = new Date(bufferStart); date <= bufferEnd; date.setDate(date.getDate() + 1)) {
+        if (isChallengeDate(date, recurringItems)) {
+            const dateKey = date.toISOString().split('T')[0];
+            challengeDays.push(dateKey);
+        }
+    }
+    
+    return challengeDays;
+}
+
+function updateCalendarChallengeDays() {
+    const savedData = loadFromStorage('lifetiles_todo_list');
+    const recurringItems = savedData?.recurringItems || [];
+    
+    // Get challenge days for current month (with buffer)
+    const challengeDays = getChallengeDaysForMonth(
+        currentDate.getFullYear(), 
+        currentDate.getMonth(), 
+        recurringItems
+    );
+    
+    // Save to localStorage for performance
+    const calendarCache = loadFromStorage('lifetiles_calendar_hasChallenge_cache') || {};
+    calendarCache[`${currentDate.getFullYear()}-${currentDate.getMonth()}`] = challengeDays;
+    saveToStorage('lifetiles_calendar_hasChallenge_cache', calendarCache);
+    
+    return challengeDays;
+}
   
 // Setup Detail Event Listeners
 function setupDetailEventListeners(modal, item, listType) {
@@ -1147,7 +1242,8 @@ function saveDetailChanges(modal, item, listType) {
             frequency: frequency,
             weekdays: weekdays,
             biweekly: frequency === 'biweekly',
-            monthlyDates: monthlyDates
+            monthlyDates: monthlyDates,
+            anchorDate: frequency === 'biweekly' ? (item.anchorDate || new Date().toISOString()) : null
         };
     }
     
