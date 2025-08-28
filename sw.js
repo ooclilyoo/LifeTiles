@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'lifetiles-v3';
+const CACHE_NAME = 'lifetiles-v4';
 
 // 以 SW 的 scope 為基準，產生要快取的絕對網址（適用 GitHub Pages 子路徑）
 const SCOPE = self.registration.scope; // e.g. https://ooclilyoo.github.io/LifeTiles/
