@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f8fafc">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LifeTiles">
+    
+    <title>LifeTiles</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Daily Challenge Tab -->
+            <section id="daily-challenge" class="tab-content active">
+                <div class="placeholder-content">
+                    <h2>Daily Challenge</h2>
+                    <p>Your daily inspiration awaits...</p>
+                </div>
+            </section>
+
+            <!-- To-Do List Tab -->
+            <section id="todo-list" class="tab-content">
+                <div class="placeholder-content">
+                    <h2>To-Do List</h2>
+                    <p>Organize your day...</p>
+                </div>
+            </section>
+
+            <!-- Books & Films Tab -->
+            <section id="books-films" class="tab-content">
+                <div class="placeholder-content">
+                    <h2>Books & Films</h2>
+                    <p>Track your entertainment...</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav id="bottom-nav">
+            <button class="nav-tab active" data-tab="daily-challenge">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-label">Daily Challenge</span>
+            </button>
+            <button class="nav-tab" data-tab="todo-list">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">To-Do List</span>
+            </button>
+            <button class="nav-tab" data-tab="books-films">
+                <span class="nav-icon">📚</span>
+                <span class="nav-label">Books & Films</span>
+            </button>
+        </nav>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

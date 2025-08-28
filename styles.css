@@ -1,0 +1,188 @@
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #334155;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Main Content Area */
+#main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  padding-bottom: 100px; /* Space for bottom nav */
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Placeholder Content */
+.placeholder-content {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.placeholder-content h2 {
+  font-size: 28px;
+  font-weight: 300;
+  margin-bottom: 16px;
+  color: #475569;
+}
+
+.placeholder-content p {
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+/* Bottom Navigation */
+#bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid #e2e8f0;
+  padding: 12px 0 8px 0;
+  display: flex;
+  justify-content: space-around;
+  z-index: 1000;
+}
+
+.nav-tab {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.nav-tab:hover {
+  background-color: #f1f5f9;
+}
+
+.nav-tab.active {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.nav-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* iOS Safe Area Support */
+@supports (padding: max(0px)) {
+  #bottom-nav {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  
+  #main-content {
+    padding-bottom: max(100px, calc(100px + env(safe-area-inset-bottom)));
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0f172a;
+    color: #e2e8f0;
+  }
+  
+  #bottom-nav {
+    background: rgba(15, 23, 42, 0.95);
+    border-top-color: #1e293b;
+  }
+  
+  .nav-tab:hover {
+    background-color: #1e293b;
+  }
+  
+  .nav-tab.active {
+    background-color: #3730a3;
+    color: #e0e7ff;
+  }
+  
+  .placeholder-content h2 {
+    color: #cbd5e1;
+  }
+  
+  .placeholder-content p {
+    color: #64748b;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  #main-content {
+    padding: 16px;
+  }
+  
+  .placeholder-content {
+    padding: 40px 16px;
+  }
+  
+  .placeholder-content h2 {
+    font-size: 24px;
+  }
+  
+  .nav-label {
+    font-size: 10px;
+  }
+}
+
+/* PWA Full Screen Styles */
+@media (display-mode: standalone) {
+  body {
+    /* Ensure full screen on installed PWA */
+    height: 100vh;
+    width: 100vw;
+  }
+}
