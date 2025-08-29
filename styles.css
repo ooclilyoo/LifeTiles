@@ -1334,3 +1334,98 @@ body {
     color: #94a3b8;
   }
 }
+
+/* Archive Control Styles */
+.archive-control {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 20px;
+    margin-top: 16px;
+}
+
+.archive-control small {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* Accessibility Improvements */
+.calendar-day:focus {
+    outline: 2px solid #3730a3;
+    outline-offset: 2px;
+    background-color: #e0e7ff;
+}
+
+.nav-tab:focus {
+    outline: 2px solid #3730a3;
+    outline-offset: 2px;
+    background-color: #e0e7ff;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .calendar-day:hover {
+        transform: none;
+    }
+    
+    .nav-tab:hover {
+        transform: none;
+    }
+    
+    .add-btn:hover {
+        transform: none;
+    }
+    
+    .manage-challenges-btn:hover {
+        transform: none;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .calendar-day {
+        border: 2px solid #000;
+    }
+    
+    .calendar-day.status-success {
+        border-color: #000;
+        background-color: #fff;
+        color: #000;
+    }
+    
+    .calendar-day.status-rescued {
+        border-color: #000;
+        background-color: #fff;
+        color: #000;
+    }
+    
+    .calendar-day.status-failed {
+        border-color: #000;
+        background-color: #fff;
+        color: #000;
+    }
+    
+    .calendar-day.status-pending {
+        border-color: #000;
+        background-color: #fff;
+        color: #000;
+    }
+}
+
+/* Dark Mode Support for Archive Control */
+@media (prefers-color-scheme: dark) {
+    .archive-control {
+        border-top-color: #475569;
+    }
+    
+    .archive-control small {
+        color: #64748b;
+    }
+}

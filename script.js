@@ -241,6 +241,17 @@ function showItemDetail(item, listType) {
                         <input type="text" id="monthlyDates" value="${item.recurring?.monthlyDates?.join(', ') || '1, 15'}" placeholder="1, 15, 28" class="detail-input">
                         <small>Enter dates separated by commas (1-31)</small>
                     </div>
+                    
+                    <div class="archive-control">
+                        <label class="detail-label">Archive Control:</label>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="detailArchived" ${item.recurring?.archived ? 'checked' : ''}>
+                            <label for="detailArchived">Archive recurring item (stop future instances)</label>
+                        </div>
+                        ${item.recurring?.archived && item.recurring?.archivedOn ? `
+                        <small>Archived on ${new Date(item.recurring.archivedOn).toLocaleDateString()}</small>
+                        ` : ''}
+                    </div>
                 </div>
                 ` : ''}
                 
@@ -464,7 +475,9 @@ function createTodoItem(listType, name) {
             biweekly: false,
             monthlyDates: [1, 15],
             anchorDate: new Date().toISOString(), // Add anchor date for biweekly calculations
-            perDateCompletions: {} // Track completions by date (YYYY-MM-DD)
+            perDateCompletions: {}, // Track completions by date (YYYY-MM-DD)
+            archived: false, // Archive flag to suppress future instances
+            archivedOn: null // Date when item was archived (ISO string)
         } : null
     };
     
@@ -531,6 +544,8 @@ function renderCalendar() {
         
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
+        dayElement.setAttribute('role', 'gridcell');
+        dayElement.setAttribute('tabindex', '0');
         dayElement.textContent = date.getDate();
         
         // Check if it's current month
@@ -558,8 +573,37 @@ function renderCalendar() {
             dayElement.classList.add(`status-${computedStatus}`);
         }
         
+        // Create accessible label
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = monthNames[date.getMonth()];
+        const dayOfMonth = date.getDate();
+        const year = date.getFullYear();
+        
+        let ariaLabel = `${monthName} ${dayOfMonth}, ${year}`;
+        if (challengeDays.includes(dateKey)) {
+            ariaLabel += ' — Challenge day';
+            if (computedStatus && computedStatus !== 'no-challenge') {
+                ariaLabel += ` — Status: ${computedStatus.charAt(0).toUpperCase() + computedStatus.slice(1)}`;
+            }
+        } else {
+            ariaLabel += ' — No Challenge';
+        }
+        
+        dayElement.setAttribute('aria-label', ariaLabel);
+        
         // Add click event for status display (no longer for manual picker)
         dayElement.addEventListener('click', () => showDateStatus(date, computedStatus));
+        
+        // Add keyboard support
+        dayElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                showDateStatus(date, computedStatus);
+            }
+        });
         
         calendarDaysElement.appendChild(dayElement);
     }
@@ -920,8 +964,7 @@ function toggleTodoCompletion(listType, index, completed) {
         saveToStorage('lifetiles_todo_list', savedData);
         
         // Re-render both lists to update sorting
-        renderTodoList('singleItems', 'singleItemsList');
-        renderTodoList('recurringItems', 'recurringItemsList');
+        renderTodoList(listType, listType === 'singleItems' ? 'singleItemsList' : 'recurringItemsList');
         
         // Recompute calendar statuses if this affects recurring items
         if (listType === 'recurringItems') {
@@ -940,6 +983,28 @@ function toggleBooksFilmsCompletion(listType, index, completed) {
         
         // Re-render the list
         renderBooksFilmsList(listType, listType === 'books' ? 'booksList' : 'filmsList');
+    }
+}
+
+// Toggle Archive Status
+function toggleArchiveStatus(item, listType, index) {
+    const savedData = loadFromStorage('lifetiles_todo_list') || {};
+    if (savedData[listType] && savedData[listType][index]) {
+        const currentItem = savedData[listType][index];
+        
+        if (currentItem.recurring) {
+            currentItem.recurring.archived = !currentItem.recurring.archived;
+            currentItem.recurring.archivedOn = currentItem.recurring.archived ? new Date().toISOString() : null;
+            currentItem.updated = new Date().toISOString();
+            
+            saveToStorage('lifetiles_todo_list', savedData);
+            
+            // Re-render the list
+            renderTodoList(listType, listType === 'singleItems' ? 'singleItemsList' : 'recurringItemsList');
+            
+            // Recompute calendar statuses since archive status affects challenge days
+            recomputeCalendarStatuses();
+        }
     }
 }
 
@@ -1021,24 +1086,51 @@ function setupTabNavigation() {
     const navTabs = document.querySelectorAll('.nav-tab');
     const tabContents = document.querySelectorAll('.tab-content');
     
-    navTabs.forEach(tab => {
+    navTabs.forEach((tab, index) => {
         tab.addEventListener('click', function() {
-            const targetTab = this.getAttribute('data-tab');
-            
-            // Update active states
-            navTabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            this.classList.add('active');
-            document.getElementById(targetTab).classList.add('active');
-            
-            // Save current tab to local storage
-            localStorage.setItem('lifetiles_current_tab', targetTab);
-            
-            // Log tab change for debugging
-            console.log(`Switched to tab: ${targetTab}`);
+            activateTab(this);
+        });
+        
+        // Add keyboard navigation
+        tab.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                activateTab(tab);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const prevTab = navTabs[(index - 1 + navTabs.length) % navTabs.length];
+                prevTab.focus();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                const nextTab = navTabs[(index + 1) % navTabs.length];
+                nextTab.focus();
+            }
         });
     });
+}
+
+// Activate Tab Helper Function
+function activateTab(selectedTab) {
+    const targetTab = selectedTab.getAttribute('data-tab');
+    const navTabs = document.querySelectorAll('.nav-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // Update active states
+    navTabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+    });
+    tabContents.forEach(content => content.classList.remove('active'));
+    
+    selectedTab.classList.add('active');
+    selectedTab.setAttribute('aria-selected', 'true');
+    document.getElementById(targetTab).classList.add('active');
+    
+    // Save current tab to local storage
+    localStorage.setItem('lifetiles_current_tab', targetTab);
+    
+    // Log tab change for debugging
+    console.log(`Switched to tab: ${targetTab}`);
 }
 
 // Check PWA Status
@@ -1101,6 +1193,19 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
     
     return recurringItems.some(item => {
         if (!item.recurring) return false;
+        
+        // Check if item is archived and if the date is after archive date
+        if (item.recurring.archived && item.recurring.archivedOn) {
+            const archiveDate = new Date(item.recurring.archivedOn);
+            const archiveGmt8 = new Date(archiveDate.getTime() + (8 * 60 * 60 * 1000));
+            const archiveDayBoundary = new Date(archiveGmt8);
+            archiveDayBoundary.setHours(0, 0, 0, 0);
+            
+            // If this date is on or after the archive date, exclude it
+            if (gmt8Date >= archiveDayBoundary) {
+                return false;
+            }
+        }
         
         const { frequency, weekdays, monthlyDates } = item.recurring;
         
@@ -1203,22 +1308,34 @@ function setupDetailEventListeners(modal, item, listType) {
         // Update the item's completion status immediately for visual feedback
         item.completed = completedCheckbox.checked;
     });
+
+    // Archive checkbox
+    const archivedCheckbox = modal.querySelector('#detailArchived');
+    archivedCheckbox.addEventListener('change', () => {
+        item.recurring.archived = archivedCheckbox.checked;
+        item.recurring.archivedOn = archivedCheckbox.checked ? new Date().toISOString() : null;
+        item.updated = new Date().toISOString();
+    });
 }
 
 // Update Recurring Options Display
 function updateRecurringOptions(modal, frequency) {
     const weekdaySelection = modal.querySelector('.weekday-selection');
     const monthlyDates = modal.querySelector('.monthly-dates');
+    const archiveControl = modal.querySelector('.archive-control');
     
     if (frequency === 'weekly') {
         weekdaySelection.style.display = 'block';
         monthlyDates.style.display = 'none';
+        archiveControl.style.display = 'none';
     } else if (frequency === 'monthly') {
         weekdaySelection.style.display = 'none';
         monthlyDates.style.display = 'block';
+        archiveControl.style.display = 'block';
     } else {
         weekdaySelection.style.display = 'none';
         monthlyDates.style.display = 'none';
+        archiveControl.style.display = 'none';
     }
 }
 
@@ -1226,6 +1343,7 @@ function updateRecurringOptions(modal, frequency) {
 function saveDetailChanges(modal, item, listType) {
     const newName = modal.querySelector('#detailItemName').value.trim();
     const completed = modal.querySelector('#detailCompleted').checked;
+    const archived = modal.querySelector('#detailArchived').checked;
     const newType = modal.querySelector('.type-btn.active').dataset.type;
     
     if (!newName) {
@@ -1264,7 +1382,8 @@ function saveDetailChanges(modal, item, listType) {
             weekdays: weekdays,
             biweekly: frequency === 'biweekly',
             monthlyDates: monthlyDates,
-            anchorDate: frequency === 'biweekly' ? (item.anchorDate || new Date().toISOString()) : null
+            anchorDate: frequency === 'biweekly' ? (item.anchorDate || new Date().toISOString()) : null,
+            archived: archived // Include archived status
         };
     }
     
@@ -1361,6 +1480,29 @@ function saveBooksFilmsDetailChanges(modal, item, listType) {
     }
 }
 
+// First Success Detection Function
+function findFirstSuccessDate(recurringItems) {
+    if (!recurringItems || recurringItems.length === 0) {
+        return null;
+    }
+    
+    // Get all challenge dates from the beginning of time to today
+    const today = new Date();
+    const startDate = new Date(2020, 0, 1); // Start from 2020 as a reasonable starting point
+    
+    for (let date = new Date(startDate); date <= today; date.setDate(date.getDate() + 1)) {
+        if (isChallengeDate(date, recurringItems)) {
+            // Check if this date has a success status
+            const status = computeDateStatus(date, recurringItems);
+            if (status === 'success') {
+                return date;
+            }
+        }
+    }
+    
+    return null; // No success found
+}
+
 // Automatic Status Computation Functions
 function computeDateStatus(date, recurringItems) {
     const dateKey = date.toISOString().split('T')[0];
@@ -1381,6 +1523,18 @@ function computeDateStatus(date, recurringItems) {
     const requiredItems = getRequiredItemsForDate(date, recurringItems);
     if (requiredItems.length === 0) {
         return 'no-challenge';
+    }
+    
+    // Check if we're before the first success date
+    const firstSuccessDate = findFirstSuccessDate(recurringItems);
+    if (firstSuccessDate) {
+        const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+        const gmt8FirstSuccess = new Date(firstSuccessDate.getTime() + (8 * 60 * 60 * 1000));
+        
+        // If this date is before the first success date, force No Challenge
+        if (gmt8Date < gmt8FirstSuccess) {
+            return 'no-challenge';
+        }
     }
     
     // Check completion status
@@ -1433,6 +1587,19 @@ function getRequiredItemsForDate(date, recurringItems) {
     
     return recurringItems.filter(item => {
         if (!item.recurring) return false;
+        
+        // Check if item is archived and if the date is after archive date
+        if (item.recurring.archived && item.recurring.archivedOn) {
+            const archiveDate = new Date(item.recurring.archivedOn);
+            const archiveGmt8 = new Date(archiveDate.getTime() + (8 * 60 * 60 * 1000));
+            const archiveDayBoundary = new Date(archiveGmt8);
+            archiveDayBoundary.setHours(0, 0, 0, 0);
+            
+            // If this date is on or after the archive date, exclude it
+            if (date >= archiveDayBoundary) {
+                return false;
+            }
+        }
         
         const { frequency, weekdays, monthlyDates, anchorDate } = item.recurring;
         
