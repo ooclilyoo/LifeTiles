@@ -6,8 +6,45 @@ let selectedDate = null;
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Add touch event debugging
+    console.log('Device Info:', {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        maxTouchPoints: navigator.maxTouchPoints,
+        isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent)
+    });
+    
+    // Add touch event listeners for iOS compatibility
+    addTouchEventSupport();
+    
     initializeApp();
 });
+
+// Add Touch Event Support for iOS
+function addTouchEventSupport() {
+    // Check if we're on iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    if (isIOS) {
+        console.log('iOS device detected, adding touch event support');
+        
+        // Add touchstart events to all interactive elements
+        const interactiveElements = document.querySelectorAll('button, .nav-tab, .calendar-day, .todo-item, .books-films-item');
+        
+        interactiveElements.forEach(element => {
+            element.addEventListener('touchstart', function(e) {
+                console.log('Touch event on:', element.tagName, element.className);
+                // Prevent double-firing on iOS
+                e.preventDefault();
+                
+                // Simulate click after a short delay
+                setTimeout(() => {
+                    element.click();
+                }, 50);
+            }, { passive: false });
+        });
+    }
+}
 
 // Main app initialization
 function initializeApp() {

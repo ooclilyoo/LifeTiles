@@ -1429,3 +1429,81 @@ body {
         color: #64748b;
     }
 }
+
+/* iOS Touch Improvements */
+@media (max-width: 768px) {
+    /* Ensure buttons are large enough for touch */
+    button, .nav-tab, .add-btn, .action-btn {
+        min-height: 44px;
+        min-width: 44px;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    /* Improve touch targets */
+    .todo-item, .books-films-item {
+        min-height: 44px;
+        padding: 12px;
+    }
+    
+    .calendar-day {
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Fix iOS button styling */
+    button {
+        -webkit-appearance: none;
+        appearance: none;
+        border-radius: 8px;
+        border: none;
+        background: #f1f5f9;
+        color: #334155;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    button:active {
+        transform: scale(0.95);
+        background: #e2e8f0;
+    }
+    
+    /* Improve modal touch handling */
+    .modal-overlay {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .item-detail-modal, .add-item-modal, .status-display {
+        -webkit-overflow-scrolling: touch;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+    /* iOS Safari specific styles */
+    body {
+        -webkit-text-size-adjust: 100%;
+        -webkit-font-smoothing: antialiased;
+    }
+    
+    input, textarea, button {
+        -webkit-appearance: none;
+        appearance: none;
+        border-radius: 8px;
+    }
+    
+    /* Fix iOS button focus */
+    button:focus {
+        outline: 2px solid #3730a3;
+        outline-offset: 2px;
+    }
+}
