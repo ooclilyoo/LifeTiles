@@ -463,7 +463,8 @@ function createTodoItem(listType, name) {
             weekdays: [1], // Monday
             biweekly: false,
             monthlyDates: [1, 15],
-            anchorDate: new Date().toISOString() // Add anchor date for biweekly calculations
+            anchorDate: new Date().toISOString(), // Add anchor date for biweekly calculations
+            perDateCompletions: {} // Track completions by date (YYYY-MM-DD)
         } : null
     };
     
@@ -489,7 +490,11 @@ function initializeCalendar() {
         currentDate = new Date(savedData.currentYear, savedData.currentMonth, 1);
     }
     
-    renderCalendar();
+    // Compute initial statuses
+    recomputeCalendarStatuses();
+    
+    // Schedule midnight recomputation
+    scheduleMidnightRecompute();
 }
 
 // Render Calendar
@@ -545,14 +550,16 @@ function renderCalendar() {
             dayElement.classList.add('has-challenge');
         }
         
-        // Check if it has a saved status (manual override for testing)
-        const savedData = loadFromStorage('lifetiles_daily_challenge');
-        if (savedData && savedData.dateStatuses && savedData.dateStatuses[dateKey]) {
-            dayElement.classList.add(`status-${savedData.dateStatuses[dateKey]}`);
+        // Check if it has a computed status (automatic)
+        const statusCache = loadFromStorage('lifetiles_daily_status_by_date') || {};
+        const computedStatus = statusCache[dateKey];
+        
+        if (computedStatus && computedStatus !== 'no-challenge') {
+            dayElement.classList.add(`status-${computedStatus}`);
         }
         
-        // Add click event
-        dayElement.addEventListener('click', () => openStatusPicker(date));
+        // Add click event for status display (no longer for manual picker)
+        dayElement.addEventListener('click', () => showDateStatus(date, computedStatus));
         
         calendarDaysElement.appendChild(dayElement);
     }
@@ -564,21 +571,8 @@ function renderCalendar() {
     saveToStorage('lifetiles_daily_challenge', currentData);
 }
 
-// Open Status Picker
-function openStatusPicker(date) {
-    const dateKey = date.toISOString().split('T')[0];
-    const savedData = loadFromStorage('lifetiles_daily_challenge');
-    const currentStatus = savedData?.dateStatuses?.[dateKey] || null;
-    
-    // Create modal overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.addEventListener('click', closeStatusPicker);
-    
-    // Create status picker
-    const picker = document.createElement('div');
-    picker.className = 'status-picker';
-    
+// Show Date Status
+function showDateStatus(date, status) {
     const dateString = date.toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
@@ -586,62 +580,76 @@ function openStatusPicker(date) {
         day: 'numeric' 
     });
     
-    picker.innerHTML = `
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.addEventListener('click', closeStatusDisplay);
+    
+    // Create status display
+    const display = document.createElement('div');
+    display.className = 'status-display';
+    
+    let statusText = '';
+    let statusIcon = '';
+    let statusDescription = '';
+    
+    switch (status) {
+        case 'success':
+            statusText = 'Success';
+            statusIcon = '✅';
+            statusDescription = 'All required items completed on time!';
+            break;
+        case 'rescued':
+            statusText = 'Rescued';
+            statusIcon = '🆘';
+            statusDescription = 'All items completed within 3 days.';
+            break;
+        case 'failed':
+            statusText = 'Failed';
+            statusIcon = '❌';
+            statusDescription = 'Some items were not completed on time.';
+            break;
+        case 'pending':
+            statusText = 'Pending';
+            statusIcon = '⏳';
+            statusDescription = 'Still within the 3-day completion window.';
+            break;
+        case 'no-challenge':
+        default:
+            statusText = 'No Challenge';
+            statusIcon = '⚪';
+            statusDescription = 'No recurring items scheduled for this date.';
+            break;
+    }
+    
+    display.innerHTML = `
         <h3>${dateString}</h3>
-        <div class="status-options">
-            <div class="status-option success ${currentStatus === 'success' ? 'selected' : ''}" data-status="success">
-                ✅ Success
-            </div>
-            <div class="status-option rescued ${currentStatus === 'rescued' ? 'selected' : ''}" data-status="rescued">
-                🆘 Rescued
-            </div>
-            <div class="status-option failed ${currentStatus === 'failed' ? 'selected' : ''}" data-status="failed">
-                ❌ Failed
-            </div>
-            <div class="status-option no-challenge ${currentStatus === 'no-challenge' ? 'selected' : ''}" data-status="no-challenge">
-                ⚪ No Challenge
-            </div>
+        <div class="status-info">
+            <div class="status-icon">${statusIcon}</div>
+            <div class="status-title">${statusText}</div>
+            <div class="status-description">${statusDescription}</div>
+        </div>
+        <div class="status-actions">
+            <button class="btn btn-secondary" id="closeStatus">Close</button>
         </div>
     `;
     
-    // Add click events to status options
-    const statusOptions = picker.querySelectorAll('.status-option');
-    statusOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            const status = option.dataset.status;
-            setDateStatus(date, status);
-            closeStatusPicker();
-        });
-    });
+    // Add close event
+    const closeBtn = display.querySelector('#closeStatus');
+    closeBtn.addEventListener('click', closeStatusDisplay);
     
     // Add to DOM
     document.body.appendChild(overlay);
-    document.body.appendChild(picker);
+    document.body.appendChild(display);
 }
 
-// Set Date Status
-function setDateStatus(date, status) {
-    const dateKey = date.toISOString().split('T')[0];
-    const savedData = loadFromStorage('lifetiles_daily_challenge') || {};
-    
-    if (!savedData.dateStatuses) {
-        savedData.dateStatuses = {};
-    }
-    
-    savedData.dateStatuses[dateKey] = status;
-    saveToStorage('lifetiles_daily_challenge', savedData);
-    
-    // Update calendar display
-    renderCalendar();
-}
-
-// Close Status Picker
-function closeStatusPicker() {
+// Close Status Display
+function closeStatusDisplay() {
     const overlay = document.querySelector('.modal-overlay');
-    const picker = document.querySelector('.status-picker');
+    const display = document.querySelector('.status-display');
     
     if (overlay) overlay.remove();
-    if (picker) picker.remove();
+    if (display) display.remove();
 }
 
 // Initialize Books and Films Lists
@@ -899,13 +907,26 @@ function createBooksFilmsItem(listType, name) {
 function toggleTodoCompletion(listType, index, completed) {
     const savedData = loadFromStorage('lifetiles_todo_list') || {};
     if (savedData[listType] && savedData[listType][index]) {
-        savedData[listType][index].completed = completed;
-        savedData[listType][index].updated = new Date().toISOString();
+        const item = savedData[listType][index];
+        item.completed = completed;
+        item.updated = new Date().toISOString();
+        
+        // If this is a recurring item, update per-date completion
+        if (listType === 'recurringItems' && item.recurring) {
+            const today = new Date();
+            updateItemCompletionForDate(item, today, completed);
+        }
+        
         saveToStorage('lifetiles_todo_list', savedData);
         
         // Re-render both lists to update sorting
         renderTodoList('singleItems', 'singleItemsList');
         renderTodoList('recurringItems', 'recurringItemsList');
+        
+        // Recompute calendar statuses if this affects recurring items
+        if (listType === 'recurringItems') {
+            recomputeCalendarStatuses();
+        }
     }
 }
 
@@ -929,7 +950,7 @@ function setupEventListeners() {
     if (prevMonthBtn) {
         prevMonthBtn.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar();
+            recomputeCalendarStatuses();
         });
     }
     
@@ -938,7 +959,7 @@ function setupEventListeners() {
     if (nextMonthBtn) {
         nextMonthBtn.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar();
+            recomputeCalendarStatuses();
         });
     }
     
@@ -1278,6 +1299,9 @@ function saveDetailChanges(modal, item, listType) {
         renderTodoList('singleItems', 'singleItemsList');
         renderTodoList('recurringItems', 'recurringItemsList');
         
+        // Recompute calendar statuses since recurring rules may have changed
+        recomputeCalendarStatuses();
+        
         // Close modal
         closeModal(modal);
     }
@@ -1335,5 +1359,191 @@ function saveBooksFilmsDetailChanges(modal, item, listType) {
         // Close modal
         closeModal(modal);
     }
+}
+
+// Automatic Status Computation Functions
+function computeDateStatus(date, recurringItems) {
+    const dateKey = date.toISOString().split('T')[0];
+    const today = new Date();
+    const todayKey = today.toISOString().split('T')[0];
+    
+    // Future dates always show No Challenge
+    if (dateKey > todayKey) {
+        return 'no-challenge';
+    }
+    
+    // Check if this is a challenge day
+    if (!isChallengeDate(date, recurringItems)) {
+        return 'no-challenge';
+    }
+    
+    // Get required items for this date
+    const requiredItems = getRequiredItemsForDate(date, recurringItems);
+    if (requiredItems.length === 0) {
+        return 'no-challenge';
+    }
+    
+    // Check completion status
+    const completedItems = requiredItems.filter(item => {
+        const completionKey = `${dateKey}_${item.created}`;
+        return item.recurring?.perDateCompletions?.[completionKey]?.completed;
+    });
+    
+    const allCompleted = completedItems.length === requiredItems.length;
+    
+    if (allCompleted) {
+        // Check if completed on the same day
+        const completedOnDate = completedItems.every(item => {
+            const completionKey = `${dateKey}_${item.created}`;
+            const completion = item.recurring?.perDateCompletions?.[completionKey];
+            if (!completion) return false;
+            
+            // Check if completion timestamp is within the same day (GMT+8)
+            const completionDate = new Date(completion.timestamp);
+            const gmt8Completion = new Date(completionDate.getTime() + (8 * 60 * 60 * 1000));
+            const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+            
+            return gmt8Completion.toDateString() === gmt8Date.toDateString();
+        });
+        
+        return completedOnDate ? 'success' : 'rescued';
+    } else {
+        // Check if we're within the 3-day rescue window
+        const daysDiff = Math.floor((new Date(todayKey) - new Date(dateKey)) / (24 * 60 * 60 * 1000));
+        
+        if (daysDiff <= 3) {
+            // Still within rescue window
+            return 'pending';
+        } else {
+            // Past rescue window - check if any items are still incomplete
+            const incompleteItems = requiredItems.filter(item => {
+                const completionKey = `${dateKey}_${item.created}`;
+                return !item.recurring?.perDateCompletions?.[completionKey]?.completed;
+            });
+            
+            return incompleteItems.length > 0 ? 'failed' : 'rescued';
+        }
+    }
+}
+
+function getRequiredItemsForDate(date, recurringItems) {
+    if (!recurringItems || recurringItems.length === 0) {
+        return [];
+    }
+    
+    return recurringItems.filter(item => {
+        if (!item.recurring) return false;
+        
+        const { frequency, weekdays, monthlyDates, anchorDate } = item.recurring;
+        
+        // Convert date to GMT+8 for consistent evaluation
+        const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+        const dayOfWeek = gmt8Date.getDay();
+        const dayOfMonth = gmt8Date.getDate();
+        
+        switch (frequency) {
+            case 'weekly':
+                return weekdays && weekdays.includes(dayOfWeek);
+                
+            case 'biweekly':
+                if (!weekdays || weekdays.length === 0) return false;
+                if (!anchorDate) return false;
+                
+                // Calculate weeks difference from anchor date
+                const anchorDateObj = new Date(anchorDate);
+                const anchorGmt8 = new Date(anchorDateObj.getTime() + (8 * 60 * 60 * 1000));
+                const weeksDiff = Math.floor((gmt8Date - anchorGmt8) / (7 * 24 * 60 * 60 * 1000));
+                
+                return weeksDiff % 2 === 0 && weekdays.includes(dayOfWeek);
+                
+            case 'monthly':
+                return monthlyDates && monthlyDates.includes(dayOfMonth);
+                
+            default:
+                return false;
+        }
+    });
+}
+
+function updateItemCompletionForDate(item, date, completed) {
+    if (!item.recurring) return;
+    
+    const dateKey = date.toISOString().split('T')[0];
+    const completionKey = `${dateKey}_${item.created}`;
+    
+    if (!item.recurring.perDateCompletions) {
+        item.recurring.perDateCompletions = {};
+    }
+    
+    if (completed) {
+        item.recurring.perDateCompletions[completionKey] = {
+            completed: true,
+            timestamp: new Date().toISOString()
+        };
+    } else {
+        delete item.recurring.perDateCompletions[completionKey];
+    }
+    
+    // Update the item in localStorage
+    const savedData = loadFromStorage('lifetiles_todo_list') || {};
+    const listType = item.type || 'recurringItems';
+    const itemIndex = savedData[listType]?.findIndex(i => i.created === item.created);
+    
+    if (itemIndex !== -1) {
+        savedData[listType][itemIndex] = item;
+        saveToStorage('lifetiles_todo_list', savedData);
+    }
+}
+
+function recomputeCalendarStatuses() {
+    // Clear existing status cache
+    const calendarCache = loadFromStorage('lifetiles_calendar_hasChallenge_cache') || {};
+    const statusCache = loadFromStorage('lifetiles_daily_status_by_date') || {};
+    
+    // Get recurring items
+    const savedData = loadFromStorage('lifetiles_todo_list');
+    const recurringItems = savedData?.recurringItems || [];
+    
+    // Recompute for current month and buffer months
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    for (let monthOffset = -1; monthOffset <= 1; monthOffset++) {
+        const year = currentYear + Math.floor((currentMonth + monthOffset) / 12);
+        const month = (currentMonth + monthOffset + 12) % 12;
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        for (let date = new Date(firstDay); date <= lastDay; date.setDate(date.getDate() + 1)) {
+            const dateKey = date.toISOString().split('T')[0];
+            const status = computeDateStatus(date, recurringItems);
+            statusCache[dateKey] = status;
+        }
+    }
+    
+    // Save status cache
+    saveToStorage('lifetiles_daily_status_by_date', statusCache);
+    
+    // Re-render calendar
+    renderCalendar();
+}
+
+function scheduleMidnightRecompute() {
+    const now = new Date();
+    const gmt8Now = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    
+    // Calculate time until next midnight in GMT+8
+    const tomorrow = new Date(gmt8Now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    
+    const timeUntilMidnight = tomorrow.getTime() - gmt8Now.getTime();
+    
+    // Schedule recomputation
+    setTimeout(() => {
+        recomputeCalendarStatuses();
+        scheduleMidnightRecompute(); // Schedule next midnight
+    }, timeUntilMidnight);
 }
   
