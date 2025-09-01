@@ -1279,6 +1279,8 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
 }
 
 function getChallengeDaysForMonth(year, month, recurringItems) {
+    console.log('getChallengeDaysForMonth - FUNCTION CALLED with:', { year, month, recurringItemsLength: recurringItems?.length });
+    
     const challengeDays = [];
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
@@ -1286,6 +1288,10 @@ function getChallengeDaysForMonth(year, month, recurringItems) {
     // Add buffer months for biweekly calculations
     const bufferStart = new Date(year, month - 1, 1);
     const bufferEnd = new Date(year, month + 1, 0);
+    
+    console.log('getChallengeDaysForMonth - bufferStart:', bufferStart.toISOString().split('T')[0]);
+    console.log('getChallengeDaysForMonth - bufferEnd:', bufferEnd.toISOString().split('T')[0]);
+    console.log('getChallengeDaysForMonth - STARTING LOOP');
     
     for (let date = new Date(bufferStart); date <= bufferEnd; date.setDate(date.getDate() + 1)) {
         const currentDateInLoop = new Date(date); // Create a new Date object for each iteration
@@ -1301,10 +1307,13 @@ function getChallengeDaysForMonth(year, month, recurringItems) {
         }
     }
     
+    console.log('getChallengeDaysForMonth - LOOP COMPLETED, challengeDays:', challengeDays);
     return challengeDays;
 }
 
 function updateCalendarChallengeDays() {
+    console.log('updateCalendarChallengeDays - FUNCTION CALLED');
+    
     const savedData = loadFromStorage('lifetiles_todo_list');
     const recurringItems = savedData?.recurringItems || [];
     
@@ -1324,6 +1333,12 @@ function updateCalendarChallengeDays() {
         });
     });
     
+    console.log('updateCalendarChallengeDays - CALLING getChallengeDaysForMonth with:', {
+        year: currentDate.getFullYear(),
+        month: currentDate.getMonth(),
+        recurringItemsLength: recurringItems.length
+    });
+    
     // Get challenge days for current month (with buffer)
     const challengeDays = getChallengeDaysForMonth(
         currentDate.getFullYear(), 
@@ -1331,7 +1346,7 @@ function updateCalendarChallengeDays() {
         recurringItems
     );
     
-    console.log('updateCalendarChallengeDays - challengeDays:', challengeDays);
+    console.log('updateCalendarChallengeDays - RETURNED challengeDays:', challengeDays);
     
     // Save to localStorage for performance
     const calendarCache = loadFromStorage('lifetiles_calendar_hasChallenge_cache') || {};
