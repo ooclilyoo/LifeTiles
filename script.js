@@ -1200,6 +1200,7 @@ window.LifeTiles = {
 // Challenge Day Computation Functions
 function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
     if (!recurringItems || recurringItems.length === 0) {
+        console.log('isChallengeDate - no recurring items');
         return false;
     }
     
@@ -1208,7 +1209,7 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
     const dayOfWeek = gmt8Date.getDay();
     const dayOfMonth = gmt8Date.getDate();
     
-    return recurringItems.some(item => {
+    const result = recurringItems.some(item => {
         if (!item.recurring) return false;
         
         // Check if item is archived and if the date is after archive date
@@ -1232,10 +1233,10 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
                 
             case 'biweekly':
                 if (!weekdays || weekdays.length === 0) return false;
-                if (!item.anchorDate) return false;
+                if (!item.recurring.anchorDate) return false;
                 
                 // Calculate weeks difference from anchor date
-                const anchorDate = new Date(item.anchorDate);
+                const anchorDate = new Date(item.recurring.anchorDate);
                 const anchorGmt8 = new Date(anchorDate.getTime() + (8 * 60 * 60 * 1000));
                 const weeksDiff = Math.floor((gmt8Date - anchorGmt8) / (7 * 24 * 60 * 60 * 1000));
                 
@@ -1273,12 +1274,16 @@ function updateCalendarChallengeDays() {
     const savedData = loadFromStorage('lifetiles_todo_list');
     const recurringItems = savedData?.recurringItems || [];
     
+    console.log('updateCalendarChallengeDays - recurringItems:', recurringItems);
+    
     // Get challenge days for current month (with buffer)
     const challengeDays = getChallengeDaysForMonth(
         currentDate.getFullYear(), 
         currentDate.getMonth(), 
         recurringItems
     );
+    
+    console.log('updateCalendarChallengeDays - challengeDays:', challengeDays);
     
     // Save to localStorage for performance
     const calendarCache = loadFromStorage('lifetiles_calendar_hasChallenge_cache') || {};
