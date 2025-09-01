@@ -1276,6 +1276,8 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
                 return false;
         }
     });
+    
+    return result;
 }
 
 function getChallengeDaysForMonth(year, month, recurringItems) {
@@ -1297,9 +1299,7 @@ function getChallengeDaysForMonth(year, month, recurringItems) {
         const currentDateInLoop = new Date(date); // Create a new Date object for each iteration
         const dateKeyInLoop = currentDateInLoop.toISOString().split('T')[0];
 
-        console.log('getChallengeDaysForMonth - checking date (loop):', dateKeyInLoop);
         const isChallenge = isChallengeDate(currentDateInLoop, recurringItems);
-        console.log('getChallengeDaysForMonth - isChallengeDate result (loop):', isChallenge);
 
         if (isChallenge) {
             console.log('getChallengeDaysForMonth - PUSHING dateKey:', dateKeyInLoop);
