@@ -1288,13 +1288,16 @@ function getChallengeDaysForMonth(year, month, recurringItems) {
     const bufferEnd = new Date(year, month + 1, 0);
     
     for (let date = new Date(bufferStart); date <= bufferEnd; date.setDate(date.getDate() + 1)) {
-        console.log('getChallengeDaysForMonth - checking date:', date.toISOString().split('T')[0]);
-        const isChallenge = isChallengeDate(date, recurringItems);
-        console.log('getChallengeDaysForMonth - isChallengeDate result:', isChallenge);
+        const currentDateInLoop = new Date(date); // Create a new Date object for each iteration
+        const dateKeyInLoop = currentDateInLoop.toISOString().split('T')[0];
+
+        console.log('getChallengeDaysForMonth - checking date (loop):', dateKeyInLoop);
+        const isChallenge = isChallengeDate(currentDateInLoop, recurringItems);
+        console.log('getChallengeDaysForMonth - isChallengeDate result (loop):', isChallenge);
+
         if (isChallenge) {
-            const dateKey = date.toISOString().split('T')[0];
-            console.log('getChallengeDaysForMonth - pushing dateKey:', dateKey);
-            challengeDays.push(dateKey);
+            console.log('getChallengeDaysForMonth - PUSHING dateKey:', dateKeyInLoop);
+            challengeDays.push(dateKeyInLoop);
         }
     }
     
