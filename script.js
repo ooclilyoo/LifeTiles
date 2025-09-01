@@ -1288,8 +1288,12 @@ function getChallengeDaysForMonth(year, month, recurringItems) {
     const bufferEnd = new Date(year, month + 1, 0);
     
     for (let date = new Date(bufferStart); date <= bufferEnd; date.setDate(date.getDate() + 1)) {
-        if (isChallengeDate(date, recurringItems)) {
+        console.log('getChallengeDaysForMonth - checking date:', date.toISOString().split('T')[0]);
+        const isChallenge = isChallengeDate(date, recurringItems);
+        console.log('getChallengeDaysForMonth - isChallengeDate result:', isChallenge);
+        if (isChallenge) {
             const dateKey = date.toISOString().split('T')[0];
+            console.log('getChallengeDaysForMonth - pushing dateKey:', dateKey);
             challengeDays.push(dateKey);
         }
     }
@@ -1301,6 +1305,7 @@ function updateCalendarChallengeDays() {
     const savedData = loadFromStorage('lifetiles_todo_list');
     const recurringItems = savedData?.recurringItems || [];
     
+    console.log('updateCalendarChallengeDays - currentDate:', currentDate.toISOString().split('T')[0]);
     console.log('updateCalendarChallengeDays - recurringItems:', recurringItems);
     
     // Debug each recurring item
