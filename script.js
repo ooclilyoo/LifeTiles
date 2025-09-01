@@ -250,7 +250,7 @@ function showItemDetail(item, listType) {
                         </label>
                     </div>
                     
-                    <div class="weekday-selection" ${item.recurring?.frequency === 'weekly' ? '' : 'style="display: none;"'}>
+                    <div class="weekday-selection" ${item.recurring?.frequency === 'weekly' || item.recurring?.frequency === 'biweekly' ? '' : 'style="display: none;"'}>
                         <label class="detail-label">Weekdays:</label>
                         <div class="weekday-checkboxes">
                             <label><input type="checkbox" value="0" ${item.recurring?.weekdays?.includes(0) ? 'checked' : ''}> Sun</label>
@@ -1341,10 +1341,10 @@ function updateRecurringOptions(modal, frequency) {
     const monthlyDates = modal.querySelector('.monthly-dates');
     const archiveControl = modal.querySelector('.archive-control');
     
-    if (frequency === 'weekly') {
+    if (frequency === 'weekly' || frequency === 'biweekly') {
         weekdaySelection.style.display = 'block';
         monthlyDates.style.display = 'none';
-        archiveControl.style.display = 'none';
+        archiveControl.style.display = 'block';
     } else if (frequency === 'monthly') {
         weekdaySelection.style.display = 'none';
         monthlyDates.style.display = 'block';
@@ -1360,7 +1360,8 @@ function updateRecurringOptions(modal, frequency) {
 function saveDetailChanges(modal, item, listType) {
     const newName = modal.querySelector('#detailItemName').value.trim();
     const completed = modal.querySelector('#detailCompleted').checked;
-    const archived = modal.querySelector('#detailArchived').checked;
+    const archivedElement = modal.querySelector('#detailArchived');
+    const archived = archivedElement ? archivedElement.checked : false;
     const newType = modal.querySelector('.type-btn.active').dataset.type;
     
     if (!newName) {
@@ -1371,26 +1372,36 @@ function saveDetailChanges(modal, item, listType) {
     // Get recurring options if applicable
     let recurringOptions = null;
     if (newType === 'recurringItems') {
-        const frequency = modal.querySelector('input[name="frequency"]:checked').value;
+        const frequencyElement = modal.querySelector('input[name="frequency"]:checked');
+        if (!frequencyElement) {
+            alert('Please select a frequency for recurring items');
+            return;
+        }
+        
+        const frequency = frequencyElement.value;
         const weekdays = [];
         const monthlyDates = [];
         
-        if (frequency === 'weekly') {
+        if (frequency === 'weekly' || frequency === 'biweekly') {
             modal.querySelectorAll('.weekday-checkboxes input:checked').forEach(checkbox => {
                 weekdays.push(parseInt(checkbox.value));
             });
             if (weekdays.length === 0) {
-                alert('Please select at least one weekday for weekly recurrence');
+                alert('Please select at least one weekday for weekly/biweekly recurrence');
                 return;
             }
         } else if (frequency === 'monthly') {
             const datesInput = modal.querySelector('#monthlyDates').value.trim();
             if (datesInput) {
-                monthlyDates = datesInput.split(',').map(d => parseInt(d.trim())).filter(d => d >= 1 && d <= 31);
-                if (monthlyDates.length === 0) {
+                const dates = datesInput.split(',').map(d => parseInt(d.trim())).filter(d => d >= 1 && d <= 31);
+                if (dates.length === 0) {
                     alert('Please enter valid monthly dates (1-31)');
                     return;
                 }
+                monthlyDates.push(...dates);
+            } else {
+                alert('Please enter monthly dates for monthly recurrence');
+                return;
             }
         }
         
@@ -1399,8 +1410,10 @@ function saveDetailChanges(modal, item, listType) {
             weekdays: weekdays,
             biweekly: frequency === 'biweekly',
             monthlyDates: monthlyDates,
-            anchorDate: frequency === 'biweekly' ? (item.anchorDate || new Date().toISOString()) : null,
-            archived: archived // Include archived status
+            anchorDate: frequency === 'biweekly' ? (item.recurring?.anchorDate || new Date().toISOString()) : null,
+            archived: archived,
+            archivedOn: archived ? (item.recurring?.archivedOn || new Date().toISOString()) : null,
+            perDateCompletions: item.recurring?.perDateCompletions || {}
         };
     }
     
