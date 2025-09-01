@@ -1210,7 +1210,21 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
     const dayOfMonth = gmt8Date.getDate();
     
     const result = recurringItems.some(item => {
-        if (!item.recurring) return false;
+        if (!item.recurring) {
+            console.log('isChallengeDate - item has no recurring data:', item.name);
+            return false;
+        }
+        
+        console.log('isChallengeDate - checking item:', {
+            name: item.name,
+            frequency: item.recurring.frequency,
+            weekdays: item.recurring.weekdays,
+            monthlyDates: item.recurring.monthlyDates,
+            archived: item.recurring.archived,
+            dayOfWeek: dayOfWeek,
+            dayOfMonth: dayOfMonth,
+            date: date.toISOString().split('T')[0]
+        });
         
         // Check if item is archived and if the date is after archive date
         if (item.recurring.archived && item.recurring.archivedOn) {
@@ -1229,23 +1243,36 @@ function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
         
         switch (frequency) {
             case 'weekly':
-                return weekdays && weekdays.includes(dayOfWeek);
+                const weeklyResult = weekdays && weekdays.includes(dayOfWeek);
+                console.log('isChallengeDate - weekly check:', { weekdays, dayOfWeek, result: weeklyResult });
+                return weeklyResult;
                 
             case 'biweekly':
-                if (!weekdays || weekdays.length === 0) return false;
-                if (!item.recurring.anchorDate) return false;
+                if (!weekdays || weekdays.length === 0) {
+                    console.log('isChallengeDate - biweekly: no weekdays');
+                    return false;
+                }
+                if (!item.recurring.anchorDate) {
+                    console.log('isChallengeDate - biweekly: no anchorDate');
+                    return false;
+                }
                 
                 // Calculate weeks difference from anchor date
                 const anchorDate = new Date(item.recurring.anchorDate);
                 const anchorGmt8 = new Date(anchorDate.getTime() + (8 * 60 * 60 * 1000));
                 const weeksDiff = Math.floor((gmt8Date - anchorGmt8) / (7 * 24 * 60 * 60 * 1000));
+                const biweeklyResult = weeksDiff % 2 === 0 && weekdays.includes(dayOfWeek);
+                console.log('isChallengeDate - biweekly check:', { weekdays, dayOfWeek, weeksDiff, result: biweeklyResult });
                 
-                return weeksDiff % 2 === 0 && weekdays.includes(dayOfWeek);
+                return biweeklyResult;
                 
             case 'monthly':
-                return monthlyDates && monthlyDates.includes(dayOfMonth);
+                const monthlyResult = monthlyDates && monthlyDates.includes(dayOfMonth);
+                console.log('isChallengeDate - monthly check:', { monthlyDates, dayOfMonth, result: monthlyResult });
+                return monthlyResult;
                 
             default:
+                console.log('isChallengeDate - unknown frequency:', frequency);
                 return false;
         }
     });
@@ -1275,6 +1302,19 @@ function updateCalendarChallengeDays() {
     const recurringItems = savedData?.recurringItems || [];
     
     console.log('updateCalendarChallengeDays - recurringItems:', recurringItems);
+    
+    // Debug each recurring item
+    recurringItems.forEach((item, index) => {
+        console.log(`Recurring item ${index}:`, {
+            name: item.name,
+            recurring: item.recurring,
+            hasRecurring: !!item.recurring,
+            frequency: item.recurring?.frequency,
+            weekdays: item.recurring?.weekdays,
+            monthlyDates: item.recurring?.monthlyDates,
+            archived: item.recurring?.archived
+        });
+    });
     
     // Get challenge days for current month (with buffer)
     const challengeDays = getChallengeDaysForMonth(
