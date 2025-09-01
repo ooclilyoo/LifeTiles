@@ -139,8 +139,18 @@ function renderTodoList(listType, containerId) {
         return;
     }
     
-    // Render items in their original order (no sorting)
-    items.forEach((item, index) => {
+    // Sort items: uncompleted first, then alphabetically within each group
+    const sortedItems = [...items].sort((a, b) => {
+        // First sort by completion status
+        if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1; // Uncompleted first
+        }
+        // Then sort alphabetically
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    
+    // Render each item
+    sortedItems.forEach((item, index) => {
         const itemElement = createTodoItemElement(item, listType, index);
         container.appendChild(itemElement);
     });
@@ -749,8 +759,18 @@ function renderBooksFilmsList(listType, containerId) {
         return;
     }
 
-    // Render items in their original order (no sorting)
-    items.forEach((item, index) => {
+    // Sort items: uncompleted first, then alphabetically within each group
+    const sortedItems = [...items].sort((a, b) => {
+        // First sort by completion status
+        if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1; // Uncompleted first
+        }
+        // Then sort alphabetically
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    // Render each item
+    sortedItems.forEach((item, index) => {
         const itemElement = createBooksFilmsItemElement(item, listType, index);
         container.appendChild(itemElement);
     });
