@@ -1319,6 +1319,12 @@ function setupDetailEventListeners(modal, item, listType) {
         });
     });
     
+    // Set initial recurring options display based on current frequency
+    const checkedFrequency = modal.querySelector('input[name="frequency"]:checked');
+    if (checkedFrequency) {
+        updateRecurringOptions(modal, checkedFrequency.value);
+    }
+    
     // Completion checkbox
     const completedCheckbox = modal.querySelector('#detailCompleted');
     completedCheckbox.addEventListener('change', () => {
@@ -1400,8 +1406,8 @@ function saveDetailChanges(modal, item, listType) {
                 }
                 monthlyDates.push(...dates);
             } else {
-                alert('Please enter monthly dates for monthly recurrence');
-                return;
+                // Use default monthly dates if none provided
+                monthlyDates.push(1, 15);
             }
         }
         
