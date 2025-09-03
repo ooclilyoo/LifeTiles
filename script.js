@@ -1199,6 +1199,8 @@ window.LifeTiles = {
 
 // Challenge Day Computation Functions
 function isChallengeDate(date, recurringItems, tz = 'GMT+8') {
+    console.log('🔥 isChallengeDate - NEW VERSION LOADED');
+    
     if (!recurringItems || recurringItems.length === 0) {
         console.log('isChallengeDate - no recurring items');
         return false;
