@@ -513,6 +513,10 @@ function createTodoItem(listType, name) {
     
     // Re-render the list
     renderTodoList(listType, listType === 'singleItems' ? 'singleItemsList' : 'recurringItemsList');
+    
+    if (listType === 'recurringItems') {
+        recomputeCalendarStatuses();  // 讓日曆立刻吃到新的 recurring 規則
+      }
 }
 
 // Close Modal
@@ -1145,6 +1149,12 @@ function activateTab(selectedTab) {
     
     // Save current tab to local storage
     localStorage.setItem('lifetiles_current_tab', targetTab);
+    
+    // 如果切回日曆分頁，立刻重繪（或重算後重繪）
+    if (targetTab === 'daily-challenge') {
+        renderCalendar();  // 最小成本：只重繪
+        recomputeCalendarStatuses();  // 更保險：若你的挑戰日依賴 recurring 設定剛被修改，可以改成呼叫 recomputeCalendarStatuses()（會間接呼叫 renderCalendar）
+    }
     
     // Log tab change for debugging
     console.log(`Switched to tab: ${targetTab}`);

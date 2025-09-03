@@ -149,6 +149,76 @@
         </nav>
     </div>
 
+    <!-- 1) 既有的單檔版主程式 -->
     <script src="script.js"></script>
+
+    <!-- 2) Shim：把 script.js 的功能掛到模組命名空間，供 app.js / books-films.js 使用 -->
+    <script>
+    // --- Core：通用行為（請用你 script.js 既有的對應函式名稱）---
+    window.LifeTilesCore = {
+        addTouchEventSupport: (typeof addTouchEventSupport === 'function' ? addTouchEventSupport : () => {}),
+        setupTabNavigation: (typeof setupTabNavigation === 'function' ? setupTabNavigation : () => {}),
+        activateTab: (typeof activateTab === 'function' ? activateTab : () => {}),
+        checkPWAStatus: (typeof checkPWAStatus === 'function' ? checkPWAStatus : () => {}),
+        closeModal: (typeof closeModal === 'function' ? closeModal : () => {}),
+    };
+
+    // --- Storage：localStorage 的統一入口 ---
+    window.LifeTilesStorage = {
+        initializeLocalStorage: (typeof initializeLocalStorage === 'function' ? initializeLocalStorage : () => {}),
+        saveToStorage: (typeof saveToStorage === 'function' ? saveToStorage : () => {}),
+        loadFromStorage: (typeof loadFromStorage === 'function' ? loadFromStorage : () => ({})),
+        getInitialData: (typeof getInitialData === 'function' ? getInitialData : () => ({})),
+    };
+
+    // --- Daily Challenge（行事曆）---
+    window.LifeTilesDailyChallenge = {
+        initializeCalendar: (typeof initializeCalendar === 'function' ? initializeCalendar : () => {}),
+        // 如果 app.js 會呼叫 setupDailyChallengeEventListeners，就提供一個包裝器
+        setupDailyChallengeEventListeners: () => {
+        // 確保上一月/下一月等按鈕有被綁定（若 script.js 已經綁過，這裡就當保險）
+        const prev = document.getElementById('prevMonth');
+        const next = document.getElementById('nextMonth');
+        if (prev && !prev.__ltBound) { prev.addEventListener('click', () => { if (typeof goToPreviousMonth==='function') goToPreviousMonth(); }); prev.__ltBound = true; }
+        if (next && !next.__ltBound) { next.addEventListener('click', () => { if (typeof goToNextMonth==='function') goToNextMonth(); }); next.__ltBound = true; }
+        // 你原本有 render/recompute 的函式，就在需要時呼叫
+        if (typeof recomputeCalendarStatuses === 'function') {
+            recomputeCalendarStatuses();
+        } else if (typeof renderCalendar === 'function') {
+            renderCalendar();
+        }
+        },
+    };
+
+    // --- To-Do（單次/週期）---
+    window.LifeTilesTodo = {
+        initializeTodoLists: (typeof initializeTodoLists === 'function' ? initializeTodoLists : () => {}),
+        setupTodoEventListeners: () => {
+        // 若 script.js 已經集中綁在一個 setupEventListeners()，這裡可以直接呼叫它。
+        if (typeof setupEventListeners === 'function') {
+            setupEventListeners();
+        } else {
+            // 或者你也能在這裡只綁待辦區塊需要的按鈕（addSingleItem / addRecurringItem 等）
+            const addSingle = document.getElementById('addSingleItem');
+            const addRecurring = document.getElementById('addRecurringItem');
+            if (addSingle && !addSingle.__ltBound) { addSingle.addEventListener('click', () => { if (typeof openAddSingleItemModal==='function') openAddSingleItemModal(); }); addSingle.__ltBound = true; }
+            if (addRecurring && !addRecurring.__ltBound) { addRecurring.addEventListener('click', () => { if (typeof openAddRecurringItemModal==='function') openAddRecurringItemModal(); }); addRecurring.__ltBound = true; }
+        }
+        },
+    };
+
+    // 曝露你單檔版中已經存在、但 app.js 可能會用到的輔助函式（視需要）
+    window.LifeTilesHelpers = {
+        recomputeCalendarStatuses: (typeof recomputeCalendarStatuses === 'function' ? recomputeCalendarStatuses : () => {}),
+        renderCalendar: (typeof renderCalendar === 'function' ? renderCalendar : () => {}),
+    };
+    </script>
+
+    <!-- 3) 模組檔：書/電影清單（這支通常已經以 LifeTilesBooksFilms 方式輸出） -->
+    <script src="books-films.js"></script>
+
+    <!-- 4) 模組版入口：會呼叫 LifeTilesCore / Storage / Todo / DailyChallenge / BooksFilms -->
+    <script src="app.js"></script>
+
 </body>
 </html>

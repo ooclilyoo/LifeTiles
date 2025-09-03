@@ -1,50 +1,50 @@
 // sw.js
-const CACHE_NAME = 'lifetiles-v4';
+const CACHE_NAME = 'lifetiles-v7';
 
-// 以 SW 的 scope 為基準，產生要快取的絕對網址（適用 GitHub Pages 子路徑）
-const SCOPE = self.registration.scope; // e.g. https://ooclilyoo.github.io/LifeTiles/
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js',
-  '/manifest.json'
-];
+// 重要：用 SW 的 scope 來組資源路徑，避免 GitHub Pages 子目錄抓錯
+const SCOPE = self.registration.scope; // e.g. https://<user>.github.io/LifeTiles/
+const assets = [
+  'index.html',
+  'styles.css',
+  'manifest.json',
+  'script.js',
+  'books-films.js',
+  'app.js',
+  'icons/icon-192x192.png',
+  'icons/icon-512x512.png',
+].map(p => new URL(p, SCOPE).toString());
 
-// Install event - cache resources
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => cache.addAll(assets))
+      .then(() => self.skipWaiting()) // 讓新版 SW 立即進入 activate
   );
 });
 
-// Fetch event - serve from cache when offline
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-  );
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // 清掉舊版 cache
+    const names = await caches.keys();
+    await Promise.all(names.map(n => n !== CACHE_NAME ? caches.delete(n) : null));
+    await self.clients.claim(); // 讓目前開著的頁面也用新版 SW
+  })());
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  event.respondWith((async () => {
+    const cached = await caches.match(req);
+    if (cached) return cached;
+    try {
+      const fresh = await fetch(req);
+      return fresh;
+    } catch (err) {
+      // 離線兜底：如果是導覽請求，回 index.html
+      if (req.mode === 'navigate') {
+        return caches.match(new URL('index.html', SCOPE).toString());
+      }
+      throw err;
+    }
+  })());
 });
