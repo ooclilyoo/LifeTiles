@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'lifetiles-v7';
+const CACHE_NAME = 'lifetiles-v8';
 
 // 重要：用 SW 的 scope 來組資源路徑，避免 GitHub Pages 子目錄抓錯
 const SCOPE = self.registration.scope; // e.g. https://<user>.github.io/LifeTiles/
